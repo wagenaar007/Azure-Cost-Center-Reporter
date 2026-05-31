@@ -1,0 +1,38 @@
+# Credentials – NIEMALS einchecken!
+.env
+*.env
+costcenter_settings.json
+
+# Build-Artefakte
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# Cache
+*.db
+*.sqlite
+*.sqlite3
+costcenter_cache.db
+
+# IDE
+.venv/
+venv/
+.idea/
+.vscode/
+*.code-workspace
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Installer build output
+installer/*.exe
+
+# Logs
+*.log

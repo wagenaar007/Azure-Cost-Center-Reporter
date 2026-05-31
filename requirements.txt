@@ -1,0 +1,19 @@
+# Azure CostCenter Reporter – Python-Abhängigkeiten
+
+# Azure Authentifizierung
+azure-identity>=1.16.0
+
+# HTTP-Client für Azure REST APIs
+requests>=2.31.0
+
+# Excel-Generierung
+openpyxl>=3.1.2
+
+# Konfiguration via .env Datei
+python-dotenv>=1.0.0
+
+# GUI (CustomTkinter) – benötigt für gui.py
+customtkinter>=5.2.0
+
+# EXE-Build (nur auf dem Build-PC nötig)
+pyinstaller>=6.0.0
