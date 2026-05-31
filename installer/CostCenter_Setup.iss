@@ -1,7 +1,7 @@
 #define AppName      "Azure Cost Center Reporter"
 #define AppVersion   "0.0.1"
 #define AppPublisher "Nils Wagenaar"
-#define AppURL       "https://github.com/nilswagenaar/costcenter"
+#define AppURL       "https://github.com/wagenaar007/Azure-Cost-Center-Reporter"
 #define AppExeName   "CostCenter.exe"
 #define AppDataFile  "costcenter_settings.json"
 
