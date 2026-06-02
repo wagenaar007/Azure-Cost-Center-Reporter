@@ -561,7 +561,6 @@ def _build_subscriptions(wb: Workbook, sub_totals: list[dict]):
 
 def build_excel(
     output_file: str,
-    daily_records:    list[dict],
     weekly_records:   list[dict],
     monthly_records:  list[dict],
     yearly_records:   list[dict],

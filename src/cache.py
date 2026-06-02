@@ -8,7 +8,9 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 if getattr(sys, "frozen", False):
-    _DB_PATH = Path(sys.executable).parent / "costcenter_cache.db"
+    _app_dir = Path.home() / "AppData" / "Local" / "CostCenter"
+    _app_dir.mkdir(parents=True, exist_ok=True)
+    _DB_PATH = _app_dir / "costcenter_cache.db"
 else:
     _DB_PATH = Path(__file__).parent.parent / "costcenter_cache.db"
 
@@ -47,9 +49,22 @@ def init_db():
     logger.debug("Cache initialisiert: %s", _DB_PATH)
 
 
-def get_cached_months(subscription_id: str) -> set:
-    from datetime import date
+_REFRESH_HOURS = 4  # Azure refreshes cost data every 4 hours (per Microsoft docs)
 
+
+def get_cached_months(subscription_id: str) -> set:
+    """Return the set of year-months that are safe to read from local cache.
+
+    Rules:
+    - current_ym  (e.g. 2026-06): always excluded – billing is live and changes
+      every few hours.
+    - prev_ym     (e.g. 2026-05): excluded only when the cached copy is older
+      than _REFRESH_HOURS.  Re-fetching every run wastes QPU quota; Azure only
+      updates data every 4 h anyway.
+    """
+    from datetime import date, datetime, timedelta
+
+    now = datetime.now()
     today = date.today()
     current_ym = today.strftime("%Y-%m")
     prev_ym = (
@@ -60,10 +75,30 @@ def get_cached_months(subscription_id: str) -> set:
 
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT year_month FROM fetched_months WHERE subscription_id = ?",
+            "SELECT year_month, fetched_at FROM fetched_months WHERE subscription_id = ?",
             (subscription_id,),
         ).fetchall()
-    return {r["year_month"] for r in rows} - {current_ym, prev_ym}
+
+    cached: set[str] = set()
+    for r in rows:
+        ym = r["year_month"]
+        if ym == current_ym:
+            continue  # never cache the current month
+        if ym == prev_ym:
+            # Only use cached copy if it is fresh enough
+            fetched_at_raw = r["fetched_at"] or ""
+            try:
+                fetched_at = datetime.fromisoformat(fetched_at_raw)
+                age_h = (now - fetched_at).total_seconds() / 3600
+                if age_h <= _REFRESH_HOURS:
+                    cached.add(ym)
+                # else: stale → exclude so it gets re-fetched
+            except (ValueError, TypeError):
+                pass  # unparseable timestamp → re-fetch to be safe
+            continue
+        cached.add(ym)
+
+    return cached
 
 
 def load_records(subscription_id: str, date_from: str, date_to: str) -> list:

@@ -71,6 +71,7 @@ $pyinstallerArgs = @(
     "gui.py",
     "--onefile",
     "--windowed",
+    "--noupx",
     "--name", "CostCenter",
     "--distpath", "dist",
     "--workpath", "build"

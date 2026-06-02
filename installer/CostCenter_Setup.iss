@@ -1,5 +1,5 @@
 #define AppName      "Azure Cost Center Reporter"
-#define AppVersion   "0.0.1"
+#define AppVersion   "0.0.2"
 #define AppPublisher "Nils Wagenaar"
 #define AppURL       "https://github.com/wagenaar007/Azure-Cost-Center-Reporter"
 #define AppExeName   "CostCenter.exe"
@@ -12,7 +12,7 @@ AppVersion={#AppVersion}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
-DefaultDirName={autopf}\CostCenter
+DefaultDirName={localappdata}\CostCenter
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
 OutputDir=.
@@ -39,9 +39,9 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Source: "..\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{userprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{userprograms}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
+Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent

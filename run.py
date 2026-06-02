@@ -88,13 +88,10 @@ def main():
         logger.error("Keine Kostendaten geladen. Berechtigungen und Subscription-IDs prüfen.")
         sys.exit(1)
 
-    logger.info(f"Gesamt: {len(all_daily)} tägliche Datensätze geladen.")
+    logger.info(f"Gesamt: {len(all_daily)} Datensätze geladen.")
 
     _banner("Daten aggregieren")
     from src import aggregator
-
-    logger.info("Anreicherung (ResourceId parsen)...")
-    daily_enriched = aggregator.enrich_daily(all_daily)
 
     logger.info("Wochenaggregate...")
     weekly  = aggregator.aggregate_weekly(all_daily)
@@ -124,7 +121,6 @@ def main():
     try:
         build_excel(
             output_file=config.OUTPUT_FILE,
-            daily_records=daily_enriched,
             weekly_records=weekly,
             monthly_records=monthly,
             yearly_records=yearly,

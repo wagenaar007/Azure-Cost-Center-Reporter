@@ -580,14 +580,10 @@ class CostCenterApp(ctk.CTk):
 
             all_daily: list[dict] = []
             subs = list(zip(sub_ids, sub_names))
-            for idx, (sub_id, sub_name) in enumerate(subs):
+            for sub_id, sub_name in subs:
                 records = query_daily_costs(arm_token_fn, sub_id, sub_name, date_from, date_to)
                 all_daily.extend(records)
-                if idx < len(subs) - 1:
-                    self._log_queue.put((20, f"Waiting 90 s after {sub_name} (rate limit protection)\u2026"))
-                    time.sleep(90)
 
-            daily_enriched  = aggregator.enrich_daily(all_daily)
             weekly          = aggregator.aggregate_weekly(all_daily)
             monthly         = aggregator.aggregate_monthly(all_daily)
             yearly          = aggregator.aggregate_yearly(all_daily)
@@ -596,7 +592,6 @@ class CostCenterApp(ctk.CTk):
 
             build_excel(
                 output_file=output_file,
-                daily_records=daily_enriched,
                 weekly_records=weekly,
                 monthly_records=monthly,
                 yearly_records=yearly,
