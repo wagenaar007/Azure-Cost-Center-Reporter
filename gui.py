@@ -38,7 +38,7 @@ class CostCenterApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        self.title("Azure Cost Center Reporter  v0.0.1")
+        self.title("Azure Cost Center Reporter  v0.0.2")
         self.geometry("1060x760")
         self.minsize(860, 620)
 
@@ -393,7 +393,7 @@ class CostCenterApp(ctk.CTk):
         self.lbl_status.pack(side="left", padx=14)
 
         ctk.CTkLabel(
-            bar, text="\u00a9 2026 Nils Wagenaar  \u2022  v0.0.1",
+            bar, text="\u00a9 2026 Nils Wagenaar  \u2022  v0.0.2",
             font=ctk.CTkFont(size=9), text_color="#3A5A7A"
         ).pack(side="right", padx=14)
 
