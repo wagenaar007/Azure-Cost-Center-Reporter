@@ -1,12 +1,10 @@
 # Azure Cost Center Reporter
 
-> Cost transparency for Azure Subscriptions – Excel dashboards and interactive HTML reports.
+> Cost transparency for Azure Subscriptions – Excel dashboards, interactive HTML reports and Azure-hosted report portal.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-
-**Developer:** see [GitHub Contributors](https://github.com/wagenaar007/Azure-Cost-Center-Reporter/graphs/contributors)
 
 ---
 
@@ -17,6 +15,7 @@
 - **Resource breakdown** – costs per resource and service (ServiceName)
 - **Interactive HTML report** – filterable by subscription, month and service
 - **Excel dashboard** – multiple sheets (weekly, monthly, yearly, resources)
+- **Publish to Azure** – upload reports to Azure Blob Storage and share via a MSAL-protected web portal (Azure AD login)
 - **Local SQLite cache** – already fetched months are stored, no duplicate API calls
 - **No Python required** – portable `CostCenter.exe` (PyInstaller)
 - **Automatic token renewal** – no 401 errors on long runs (>1 h)
@@ -32,7 +31,7 @@
 2. Enter Tenant ID, Client ID and Client Secret (see [SETUP_SERVICE_PRINCIPAL.md](SETUP_SERVICE_PRINCIPAL.md))
 3. Click **"Load"** to auto-discover subscriptions, or enter IDs manually
 4. Choose date range and output file
-5. Click **"Create Report"** – done
+5. Click **"▶ Create Report"** – done
 
 ### Option B – Python directly
 
@@ -41,6 +40,28 @@ pip install -r requirements.txt
 python gui.py          # GUI
 python run.py          # CLI (requires .env file – copy from run.py header)
 ```
+
+---
+
+## Publish Reports to Azure (optional)
+
+Reports can be published directly to Azure Blob Storage with one click. Colleagues access a fixed URL, log in with their company account (Azure AD) and see an overview of all published reports – no expiring links, no separate credentials.
+
+```
+CostCenter App  →  Azure Blob Storage (private)  →  Browser + Azure AD Login
+    Button              Service Principal                 Company Account
+```
+
+**Setup:** See [SETUP_REPORT_HOSTING.md](SETUP_REPORT_HOSTING.md) for the full step-by-step guide.
+
+**In the app** (Settings → ☁ Publish to Azure):
+
+| Field | Value |
+|---|---|
+| Storage Account Name | Your Azure Storage Account name |
+| Container Name | `reports` (or any private container) |
+| Web Endpoint URL | Static Website primary endpoint from Azure Portal |
+| MSAL Client ID | App Registration ID for browser login (separate from the upload Service Principal) |
 
 ---
 
@@ -57,13 +78,22 @@ Requirements: Python 3.10+, PowerShell 7+
 
 ## Azure Permissions
 
+### Cost Reporting (required)
+
 See [SETUP_SERVICE_PRINCIPAL.md](SETUP_SERVICE_PRINCIPAL.md) for the full step-by-step guide.
 
-Summary:
 1. Create **App Registration** in Entra ID
 2. Create a **Client Secret**
 3. Assign the role **"Cost Management Reader"** to the service principal on each subscription
 4. Optional: **Reader** role for role assignments (Entra groups feature)
+
+### Report Hosting (optional)
+
+See [SETUP_REPORT_HOSTING.md](SETUP_REPORT_HOSTING.md) for details.
+
+- Service Principal needs **Storage Blob Data Contributor** on the Storage Account
+- Each viewer needs **Storage Blob Data Reader** on the Storage Account (or via Azure AD group)
+- A second App Registration (`CostCenter-Reports-Viewer`) handles the browser MSAL login
 
 ---
 
@@ -92,6 +122,8 @@ Summary:
 ├── run.py                  # CLI entry point
 ├── build_exe.ps1           # EXE build script (PyInstaller)
 ├── requirements.txt
+├── SETUP_SERVICE_PRINCIPAL.md   # Guide: App Registration + Cost Management Reader
+├── SETUP_REPORT_HOSTING.md      # Guide: Azure Blob Storage report portal
 └── src/
     ├── aggregator.py       # Weekly/monthly/yearly aggregation
     ├── auth.py             # Azure authentication
@@ -101,6 +133,8 @@ Summary:
     ├── excel_builder.py    # Excel dashboard generation
     ├── graph_client.py     # Microsoft Graph (Entra groups)
     ├── html_builder.py     # Interactive HTML report
+    ├── index_builder.py    # MSAL-protected index.html for report portal
+    ├── storage_client.py   # Azure Blob Storage upload client
     └── subscription_client.py  # Subscription discovery
 ```
 
@@ -111,21 +145,17 @@ Summary:
 | Component | Package |
 |---|---|
 | Azure Auth | `azure-identity` |
+| Azure Blob Storage | `azure-storage-blob` |
 | HTTP | `requests` |
 | GUI | `customtkinter` |
 | Excel | `openpyxl` |
 | Configuration (CLI) | `python-dotenv` |
 | EXE build | `pyinstaller` |
 | Cache | Python `sqlite3` (stdlib) |
+| Browser login | MSAL.js 2.x (CDN) |
 
 ---
 
 ## License
 
 MIT – see [LICENSE](LICENSE)
-
----
-
-## About
-
-Open-source tool for Azure cost reporting.
