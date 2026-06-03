@@ -183,40 +183,38 @@ const msalConfig = {{
   cache: {{ cacheLocation: "sessionStorage" }}
 }};
 
+const LOGIN_SCOPES = ["https://storage.azure.com/user_impersonation"];
+
 let msalInstance = null;
 let msalReady = false;
-let msalInitError = null;
 
-// Pre-initialize in background; login button will also retry if needed
 (async function initMsal() {{
   try {{
     msalInstance = new msal.PublicClientApplication(msalConfig);
     await msalInstance.initialize();
-    await msalInstance.handleRedirectPromise();
+    // Handle redirect response (called after loginRedirect returns)
+    const redirectResult = await msalInstance.handleRedirectPromise();
+    if (redirectResult && redirectResult.account) {{
+      showUser(redirectResult.account);
+    }}
     msalReady = true;
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) showUser(accounts[0]);
   }} catch(e) {{
-    msalInitError = e;
-    console.error("MSAL background init failed:", e);
+    console.error("MSAL init failed:", e);
   }}
 }})();
 
 async function msalLogin() {{
   try {{
-    // If background init failed or not yet done, retry here
     if (!msalInstance) {{
       msalInstance = new msal.PublicClientApplication(msalConfig);
-    }}
-    if (!msalReady) {{
       await msalInstance.initialize();
-      await msalInstance.handleRedirectPromise();
       msalReady = true;
     }}
-    const result = await msalInstance.loginPopup({{
-      scopes: ["https://storage.azure.com/user_impersonation"]
-    }});
-    showUser(result.account);
+    // Always use redirect – works in normal tabs, InPrivate and popup windows
+    await msalInstance.loginRedirect({{ scopes: LOGIN_SCOPES }});
+    // Page will reload after redirect; handleRedirectPromise() picks up the result
   }} catch(e) {{
     const warn = document.getElementById('auth-warning');
     warn.style.display = 'block';
@@ -238,9 +236,14 @@ async function openReport(url, event) {{
         return;
       }}
       const resp = await msalInstance.acquireTokenSilent({{
-        scopes: ["https://storage.azure.com/user_impersonation"],
+        scopes: LOGIN_SCOPES,
         account: accounts[0]
+      }}).catch(async () => {{
+        // Silent failed – do redirect to re-authenticate
+        await msalInstance.acquireTokenRedirect({{ scopes: LOGIN_SCOPES, account: accounts[0] }});
+        return null;
       }});
+      if (!resp) return; // redirect in progress
       token = resp.accessToken;
     }}
 
@@ -262,11 +265,8 @@ async function openReport(url, event) {{
 async function msalLogout() {{
   if (!msalInstance) return;
   try {{
-    await msalInstance.logoutPopup();
-  }} catch(e) {{ /* ignore */ }}
-  document.getElementById('user-label').textContent = '';
-  document.getElementById('logout-btn').style.display = 'none';
-  document.getElementById('login-btn').style.display = 'inline-block';
+    await msalInstance.logoutRedirect();
+  }} catch(e) {{ console.warn("Logout error:", e); }}
 }}
 
 function showUser(account) {{
