@@ -70,7 +70,9 @@ def build_index_html(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Azure CostCenter Reports</title>
-  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"
+          onerror="document.getElementById('auth-warning').style.display='block';
+                   document.getElementById('auth-warning').textContent='❌ MSAL konnte nicht geladen werden – Netzwerkfehler oder CDN geblockt.';"></script>
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
