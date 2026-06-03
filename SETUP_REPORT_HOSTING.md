@@ -157,6 +157,32 @@ Danach:
 
 ---
 
+## Schritt 7b – CORS am Storage Account konfigurieren
+
+Damit der Browser im `index.html` (gehostet auf `*.web.core.windows.net`) die
+Report-Dateien aus dem privaten Container laden darf, muss CORS am Blob Service
+konfiguriert werden.
+
+Navigiere im Storage Account zu:
+**Einstellungen → Ressourcenfreigabe (CORS)**
+
+Wähle den Reiter **Blob-Dienst** und klicke auf **+ Regel hinzufügen**:
+
+| Feld | Wert |
+|---|---|
+| Zulässige Ursprünge | Web-Endpunkt-URL aus Schritt 3 *(z.B. `https://<account>.z6.web.core.windows.net`)* |
+| Zulässige Methoden | `GET`, `HEAD`, `OPTIONS` |
+| Zulässige Header | `x-ms-*,Authorization,Content-Type` |
+| Verfügbar gemachte Header | `x-ms-*` |
+| Maximales Alter | `3600` |
+
+Klicke auf **Speichern**.
+
+> ⚠️ **Wichtig:** Ohne diese CORS-Regel schlägt das Öffnen von Reports im Browser
+> mit einem Fehler fehl, obwohl Login und Berechtigungen korrekt sind.
+
+---
+
 ## Schritt 8 – Einstellungen in der App eintragen
 
 Starte **CostCenter.exe** und scrolle zur Karte **☁ Publish to Azure**:
@@ -165,7 +191,8 @@ Starte **CostCenter.exe** und scrolle zur Karte **☁ Publish to Azure**:
 |---|---|
 | Storage Account Name | Speicherkontoname aus Schritt 1 *(z.B. `costcenterreports`)* |
 | Container Name | `reports` |
-| MSAL Client ID | Anwendungs-ID aus Schritt 5 *(für den Browser-Login)* |
+| Web Endpoint URL | Primärer Endpunkt aus Schritt 3 *(z.B. `https://<account>.z6.web.core.windows.net`)* |
+| MSAL Client ID | Anwendungs-ID aus Schritt 6 *(für den Browser-Login)* |
 
 > Tenant ID, Client ID und Client Secret werden automatisch aus der
 > **Azure Authentication** Karte übernommen – nichts doppelt eintragen.
