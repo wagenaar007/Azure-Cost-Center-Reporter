@@ -73,7 +73,8 @@ Starte **CostCenter.exe** und trage folgende Werte ein:
 | Tenant-ID | Verzeichnis-ID aus Schritt 1 |
 | Client-ID | Anwendungs-ID aus Schritt 1 |
 | Client Secret | Wert aus Schritt 2 |
-| Subscription-IDs | IDs der Subscriptions aus Schritt 3 |
+
+Klicke anschließend auf **Verbinden**. Die App lädt daraufhin automatisch alle verfügbaren Subscriptions und zeigt sie in einem Dropdown an. Wähle die gewünschten Subscriptions aus der Liste aus.
 
 ---
 
