@@ -753,11 +753,14 @@ class CostCenterApp(ctk.CTk):
 
         def _do_publish():
             try:
-                from src.storage_client import upload_reports, list_blobs, upload_index, get_web_endpoint
+                from src.storage_client import upload_reports, list_blobs, upload_index, get_web_endpoint, delete_tmp_blobs
                 from src.index_builder  import build_index_html
 
                 def _progress(msg):
                     self._log_queue.put((20, msg))
+
+                # Clean up leftover tmp*.html blobs from old versions
+                delete_tmp_blobs(account, container, tenant_id, client_id, client_secret)
 
                 upload_reports(
                     account=account,

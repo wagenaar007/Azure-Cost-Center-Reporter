@@ -33,6 +33,23 @@ def get_web_endpoint(account: str) -> str:
     return _WEB_URL.format(account=account)
 
 
+def _ensure_cors(client, web_origin: str) -> None:
+    """Set CORS rule on the storage account to allow fetch() from the Static Website."""
+    from azure.storage.blob import CorsRule
+    try:
+        rule = CorsRule(
+            allowed_origins=[web_origin],
+            allowed_methods=["GET", "HEAD", "OPTIONS"],
+            allowed_headers=["Authorization", "x-ms-*", "Content-Type"],
+            exposed_headers=["*"],
+            max_age_in_seconds=3600,
+        )
+        client.set_service_properties(cors=[rule])
+        logger.info("CORS-Regel gesetzt für Origin: %s", web_origin)
+    except Exception as e:
+        logger.warning("CORS konnte nicht gesetzt werden: %s", e)
+
+
 def upload_reports(
     account: str,
     container: str,
@@ -58,6 +75,10 @@ def upload_reports(
     """
     client = _get_client(account, tenant_id, client_id, client_secret)
     container_client = client.get_container_client(container)
+
+    # Set CORS so the Static Website can fetch() blobs cross-origin
+    web_origin = _WEB_URL.format(account=account)
+    _ensure_cors(client, web_origin)
 
     # Create container if it doesn't exist yet
     try:
@@ -93,6 +114,25 @@ def upload_reports(
         logger.info("  ✓ %s", url)
 
     return urls
+
+
+def delete_tmp_blobs(
+    account: str,
+    container: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
+) -> None:
+    """Delete leftover tmp*.html blobs from the container."""
+    client = _get_client(account, tenant_id, client_id, client_secret)
+    container_client = client.get_container_client(container)
+    try:
+        for blob in list(container_client.list_blobs()):
+            if blob.name.startswith("tmp") and blob.name.endswith(".html"):
+                container_client.delete_blob(blob.name)
+                logger.info("Temp-Blob gelöscht: %s", blob.name)
+    except Exception as e:
+        logger.warning("Fehler beim Bereinigen von Temp-Blobs: %s", e)
 
 
 def upload_index(
@@ -145,6 +185,9 @@ def list_blobs(
     result = []
     try:
         for blob in container_client.list_blobs():
+            # Skip leftover tmp*.html files
+            if blob.name.startswith("tmp") and blob.name.endswith(".html"):
+                continue
             result.append({
                 "name":          blob.name,
                 "last_modified": blob.last_modified,
