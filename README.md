@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Developer:** Nils Wagenaar
+**Developer:** see [GitHub Contributors](https://github.com/wagenaar007/Azure-Cost-Center-Reporter/graphs/contributors)
 
 ---
 
@@ -128,4 +128,4 @@ MIT – see [LICENSE](LICENSE)
 
 ## About
 
-Developed by **Nils Wagenaar** 
+Open-source tool for Azure cost reporting.

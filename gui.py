@@ -224,10 +224,11 @@ class CostCenterApp(ctk.CTk):
                       command=self._browse_output).grid(row=0, column=1)
 
         pub = self._card(p, "\u2601  Publish to Azure")
-        self.e_storage_account = self._field(pub, "Storage Account Name", "costcenterreports")
+        self.e_storage_account   = self._field(pub, "Storage Account Name", "z.B. costcenterreports")
         self.e_storage_container = self._field(pub, "Container Name", "reports")
+        self.e_storage_web_url   = self._field(pub, "Web Endpoint URL", "https://<account>.z6.web.core.windows.net")
         self.e_storage_msal_client = self._field(pub, "MSAL Client ID (f\u00fcr Index-Login)", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-        ctk.CTkLabel(pub, text="Tenant ID und Client Secret werden aus Azure Authentication \u00fcbernommen.",
+        ctk.CTkLabel(pub, text="Web Endpoint URL: Static Website Endpunkt aus dem Azure Portal (Datenverwaltung \u2192 Statische Website).",
                      font=ctk.CTkFont(size=9), text_color="#3A5A7A").pack(anchor="w", pady=(0, 4))
 
         ctk.CTkFrame(p, height=1, fg_color=self._BDR).pack(fill="x", padx=10, pady=(10, 8))
@@ -409,7 +410,7 @@ class CostCenterApp(ctk.CTk):
         self.lbl_status.pack(side="left", padx=14)
 
         ctk.CTkLabel(
-            bar, text="\u00a9 2026 Nils Wagenaar  \u2022  v0.0.2",
+            bar, text="\u00a9 2026 Azure CostCenter Reporter Contributors  \u2022  v0.0.2",
             font=ctk.CTkFont(size=9), text_color="#3A5A7A"
         ).pack(side="right", padx=14)
 
@@ -473,6 +474,7 @@ class CostCenterApp(ctk.CTk):
         save["_available_subs"]      = self._available_subs
         save["STORAGE_ACCOUNT"]      = self.e_storage_account.get().strip()
         save["STORAGE_CONTAINER"]    = self.e_storage_container.get().strip()
+        save["STORAGE_WEB_URL"]      = self.e_storage_web_url.get().strip()
         save["STORAGE_MSAL_CLIENT"]  = self.e_storage_msal_client.get().strip()
         try:
             SETTINGS_FILE.write_text(json.dumps(save, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -515,6 +517,7 @@ class CostCenterApp(ctk.CTk):
 
             _fill_pub(self.e_storage_account,     "STORAGE_ACCOUNT")
             _fill_pub(self.e_storage_container,   "STORAGE_CONTAINER")
+            _fill_pub(self.e_storage_web_url,     "STORAGE_WEB_URL")
             _fill_pub(self.e_storage_msal_client, "STORAGE_MSAL_CLIENT")
         except Exception as exc:
             self._append_log(f"Could not load settings: {exc}", logging.WARNING)
@@ -725,18 +728,20 @@ class CostCenterApp(ctk.CTk):
     def _publish_reports(self):
         account   = self.e_storage_account.get().strip()
         container = self.e_storage_container.get().strip()
+        web_url   = self.e_storage_web_url.get().strip().rstrip("/")
         msal_cid  = self.e_storage_msal_client.get().strip()
         cfg       = self._get_config()
         tenant_id    = cfg.get("TENANT_ID", "")
         client_id    = cfg.get("CLIENT_ID", "")
         client_secret = cfg.get("CLIENT_SECRET", "")
 
-        if not all([account, container, tenant_id, client_id, client_secret]):
+        if not all([account, container, web_url, tenant_id, client_id, client_secret]):
             messagebox.showerror(
                 "Fehlende Einstellungen",
                 "Bitte f\u00fclle alle Felder aus:\n"
                 "  - Storage Account Name\n"
                 "  - Container Name\n"
+                "  - Web Endpoint URL\n"
                 "  - Tenant ID, Client ID, Client Secret (aus Azure Authentication)"
             )
             return
@@ -754,7 +759,7 @@ class CostCenterApp(ctk.CTk):
 
         def _do_publish():
             try:
-                from src.storage_client import upload_reports, list_blobs, upload_index, get_web_endpoint, delete_tmp_blobs
+                from src.storage_client import upload_reports, list_blobs, upload_index, delete_tmp_blobs
                 from src.index_builder  import build_index_html
 
                 def _progress(msg):
@@ -791,7 +796,7 @@ class CostCenterApp(ctk.CTk):
                     progress_cb=_progress,
                 )
 
-                index_url = get_web_endpoint(account)
+                index_url = web_url
                 self._log_queue.put((-1, f"\u2705  Ver\u00f6ffentlicht! Index: {index_url}"))
                 self.after(0, lambda: self._on_publish_done(index_url))
 

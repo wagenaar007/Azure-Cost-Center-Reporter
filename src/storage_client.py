@@ -1,12 +1,9 @@
 """Azure Blob Storage client for publishing HTML reports.
 
-All files (index.html + reports) are uploaded to the $web container so they
-are served from the same origin (*.web.core.windows.net).  This avoids any
-CORS issues when the browser opens a report link.
-
-Access to the index page is gated by MSAL Azure AD login.
-Report files are publicly reachable by direct URL – acceptable for internal
-tools where URLs are not shared externally.
+Reports are uploaded to a private container (authenticated access only).
+The index.html is uploaded to the $web container (Static Website) and is
+protected via MSAL Azure AD login.  The web endpoint URL is configured by
+the user in the application settings.
 """
 import logging
 from pathlib import Path
@@ -14,7 +11,6 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _BLOB_URL      = "https://{account}.blob.core.windows.net"
-_WEB_URL       = "https://{account}.z6.web.core.windows.net"
 
 
 def _get_client(account: str, tenant_id: str, client_id: str, client_secret: str):
@@ -29,11 +25,6 @@ def _get_client(account: str, tenant_id: str, client_id: str, client_secret: str
     )
     url = _BLOB_URL.format(account=account)
     return BlobServiceClient(account_url=url, credential=credential)
-
-
-def get_web_endpoint(account: str) -> str:
-    """Return the Static Website primary endpoint URL for the storage account."""
-    return _WEB_URL.format(account=account)
 
 
 def upload_reports(
