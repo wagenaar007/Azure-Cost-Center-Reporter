@@ -56,7 +56,7 @@ def build_index_html(
         size_kb = round(blob.get("size", 0) / 1024, 1)
         rows_html += f"""
         <tr>
-          <td><a href="#" onclick="openReport('{base_url}/{name}', event)" class="report-link">📊 {name}</a></td>
+          <td><a href="/reports/{name}" target="_blank" class="report-link">📊 {name}</a></td>
           <td>{date_str}</td>
           <td>{size_kb} KB</td>
         </tr>"""
@@ -183,21 +183,17 @@ const msalConfig = {{
   cache: {{ cacheLocation: "sessionStorage" }}
 }};
 
-const LOGIN_SCOPES = ["https://storage.azure.com/user_impersonation"];
-
 let msalInstance = null;
-let msalReady = false;
 
 (async function initMsal() {{
   try {{
     msalInstance = new msal.PublicClientApplication(msalConfig);
     await msalInstance.initialize();
-    // Handle redirect response (called after loginRedirect returns)
     const redirectResult = await msalInstance.handleRedirectPromise();
     if (redirectResult && redirectResult.account) {{
       showUser(redirectResult.account);
+      return;
     }}
-    msalReady = true;
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) showUser(accounts[0]);
   }} catch(e) {{
@@ -210,63 +206,18 @@ async function msalLogin() {{
     if (!msalInstance) {{
       msalInstance = new msal.PublicClientApplication(msalConfig);
       await msalInstance.initialize();
-      msalReady = true;
     }}
-    // Always use redirect – works in normal tabs, InPrivate and popup windows
-    await msalInstance.loginRedirect({{ scopes: LOGIN_SCOPES }});
-    // Page will reload after redirect; handleRedirectPromise() picks up the result
+    await msalInstance.loginRedirect({{ scopes: ["openid", "profile"] }});
   }} catch(e) {{
     const warn = document.getElementById('auth-warning');
     warn.style.display = 'block';
     warn.textContent = '❌ Anmeldung fehlgeschlagen: ' + e.message;
-    console.error("MSAL login error:", e);
-  }}
-}}
-
-async function openReport(url, event) {{
-  event.preventDefault();
-  try {{
-    let token;
-    if (msalReady && msalInstance) {{
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length === 0) {{
-        const warn = document.getElementById('auth-warning');
-        warn.style.display = 'block';
-        warn.textContent = '⚠ Bitte zuerst anmelden.';
-        return;
-      }}
-      const resp = await msalInstance.acquireTokenSilent({{
-        scopes: LOGIN_SCOPES,
-        account: accounts[0]
-      }}).catch(async () => {{
-        // Silent failed – do redirect to re-authenticate
-        await msalInstance.acquireTokenRedirect({{ scopes: LOGIN_SCOPES, account: accounts[0] }});
-        return null;
-      }});
-      if (!resp) return; // redirect in progress
-      token = resp.accessToken;
-    }}
-
-    const headers = token ? {{ Authorization: "Bearer " + token }} : {{}};
-    const r = await fetch(url, {{ headers }});
-    if (!r.ok) throw new Error(r.status + " " + r.statusText);
-    const blob = await r.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const win = window.open(objUrl, '_blank');
-    if (win) setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
-  }} catch(e) {{
-    const warn = document.getElementById('auth-warning');
-    warn.style.display = 'block';
-    warn.textContent = '❌ Fehler beim Öffnen: ' + e.message;
-    console.error(e);
   }}
 }}
 
 async function msalLogout() {{
   if (!msalInstance) return;
-  try {{
-    await msalInstance.logoutRedirect();
-  }} catch(e) {{ console.warn("Logout error:", e); }}
+  try {{ await msalInstance.logoutRedirect(); }} catch(e) {{}}
 }}
 
 function showUser(account) {{
