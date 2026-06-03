@@ -246,7 +246,10 @@ async function openReport(url, event) {{
       await msalInstance.acquireTokenRedirect({{ scopes: SCOPES, account: accounts[0] }});
       return;
     }}
-    const r = await fetch(url, {{ headers: {{ Authorization: "Bearer " + resp.accessToken }} }});
+    const r = await fetch(url, {{ headers: {{
+      "Authorization": "Bearer " + resp.accessToken,
+      "x-ms-version": "2020-04-08"
+    }} }});
     if (!r.ok) throw new Error(r.status + " " + r.statusText);
     const blob = await r.blob();
     const objUrl = URL.createObjectURL(blob);
