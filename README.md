@@ -2,7 +2,6 @@
 
 > Cost transparency for Azure Subscriptions – Excel dashboards and interactive HTML reports.
 
-![Version](https://img.shields.io/badge/version-0.0.1-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -129,4 +128,4 @@ MIT – see [LICENSE](LICENSE)
 
 ## About
 
-Developed by **Nils Wagenaar** | Version 0.0.1
+Developed by **Nils Wagenaar** 
