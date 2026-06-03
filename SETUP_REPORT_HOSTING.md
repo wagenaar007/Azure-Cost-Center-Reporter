@@ -54,7 +54,33 @@ Klicke auf **Erstellen**.
 
 ---
 
-## Schritt 3 – Upload-Rechte für den Service Principal zuweisen
+## Schritt 3 – Statische Website aktivieren
+
+Damit die `index.html` im Browser korrekt als Webseite geöffnet wird
+(statt als XML-Fehler), muss die Static Website Funktion aktiviert werden.
+
+Im Storage Account navigiere zu:
+**Datenverwaltung → Statische Website**
+
+| Feld | Wert |
+|---|---|
+| Statische Website | **Aktiviert** |
+| Name des Indexdokuments | `index.html` |
+| Pfad des Fehlerdokuments | *(leer lassen)* |
+
+Klicke auf **Speichern**.
+
+Azure zeigt danach den **primären Endpunkt** an – notiere diese URL:
+```
+https://<account>.z6.web.core.windows.net/
+```
+> 📋 Diese URL ist die Adresse die Mitarbeiter später aufrufen. Sie unterscheidet
+> sich von der normalen Blob-URL (`blob.core.windows.net`) – nur die Web-Endpunkt-URL
+> funktioniert mit dem Azure AD Login.
+
+---
+
+## Schritt 4 – Upload-Rechte für den Service Principal zuweisen
 
 Damit die App Dateien hochladen darf, benötigt der Service Principal Schreibrechte
 auf dem Container.
@@ -72,7 +98,7 @@ Klicke auf **Überprüfen und zuweisen**.
 
 ---
 
-## Schritt 4 – Leserechte für Mitarbeiter zuweisen
+## Schritt 5 – Leserechte für Mitarbeiter zuweisen
 
 Für jeden Mitarbeiter der die Reports öffnen soll, einmalig:
 
@@ -93,10 +119,10 @@ Klicke auf **Überprüfen und zuweisen**.
 
 ---
 
-## Schritt 5 – App Registration für den Browser-Login anlegen
+## Schritt 6 – App Registration für den Browser-Login anlegen
 
 Damit Mitarbeiter sich im Browser mit ihrem Firmenkonto anmelden können, wird
-eine separate App Registration benötigt (nicht der Service Principal aus Schritt 3).
+eine separate App Registration benötigt (nicht der Service Principal aus Schritt 4).
 
 Navigiere im **Azure Portal** zu:
 **Entra ID → App-Registrierungen → Neue Registrierung**
@@ -106,9 +132,7 @@ Navigiere im **Azure Portal** zu:
 | Name | `CostCenter-Reports-Viewer` |
 | Kontotyp | Nur Konten in diesem Organisationsverzeichnis |
 | Umleitungs-URI – Plattform | **Single-Page-Anwendung (SPA)** |
-| Umleitungs-URI – URL | `https://<account>.blob.core.windows.net/reports/index.html` |
-
-Ersetze `<account>` mit dem Speicherkontonamen aus Schritt 1.
+| Umleitungs-URI – URL | Web-Endpunkt-URL aus Schritt 3 *(z.B. `https://<account>.z6.web.core.windows.net/`)* |
 
 Klicke auf **Registrieren**.
 
@@ -117,7 +141,7 @@ Klicke auf **Registrieren**.
 
 ---
 
-## Schritt 6 – API-Berechtigung für Storage hinzufügen
+## Schritt 7 – API-Berechtigung für Storage hinzufügen
 
 In der neuen App Registration navigiere zu:
 **API-Berechtigungen → Berechtigung hinzufügen**
@@ -133,7 +157,7 @@ Danach:
 
 ---
 
-## Schritt 7 – Einstellungen in der App eintragen
+## Schritt 8 – Einstellungen in der App eintragen
 
 Starte **CostCenter.exe** und scrolle zur Karte **☁ Publish to Azure**:
 
@@ -158,7 +182,7 @@ Klicke auf **💾 Save**.
 4. Die App lädt HTML + Excel hoch und aktualisiert die `index.html`
 5. Ein Popup zeigt die fertige URL – auf **Ja** klicken öffnet den Browser direkt:
    ```
-   https://costcenterreports.blob.core.windows.net/reports/index.html
+   https://<account>.z6.web.core.windows.net/
    ```
 6. Mitarbeiter rufen diese URL auf → melden sich mit Firmenkonto an → sehen alle Reports
 

@@ -753,9 +753,8 @@ class CostCenterApp(ctk.CTk):
 
         def _do_publish():
             try:
-                from src.storage_client import upload_reports, list_blobs
+                from src.storage_client import upload_reports, list_blobs, upload_index, get_web_endpoint
                 from src.index_builder  import build_index_html
-                import tempfile
 
                 def _progress(msg):
                     self._log_queue.put((20, msg))
@@ -770,8 +769,7 @@ class CostCenterApp(ctk.CTk):
                     progress_cb=_progress,
                 )
 
-                # Rebuild index.html with updated file list
-                _progress("Aktualisiere index.html\u2026")
+                # Rebuild index.html and upload to $web (Static Website root)
                 blobs = list_blobs(account, container, tenant_id, client_id, client_secret)
                 index_html = build_index_html(
                     blobs=blobs,
@@ -780,23 +778,16 @@ class CostCenterApp(ctk.CTk):
                     client_id=msal_cid or client_id,
                     tenant_id=tenant_id,
                 )
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".html", delete=False, encoding="utf-8"
-                ) as tmp:
-                    tmp.write(index_html)
-                    tmp_path = tmp.name
-
-                upload_reports(
+                upload_index(
                     account=account,
-                    container=container,
                     tenant_id=tenant_id,
                     client_id=client_id,
                     client_secret=client_secret,
-                    files=[tmp_path],
+                    index_html=index_html,
+                    progress_cb=_progress,
                 )
-                Path(tmp_path).unlink(missing_ok=True)
 
-                index_url = f"https://{account}.blob.core.windows.net/{container}/index.html"
+                index_url = get_web_endpoint(account)
                 self._log_queue.put((-1, f"\u2705  Ver\u00f6ffentlicht! Index: {index_url}"))
                 self.after(0, lambda: self._on_publish_done(index_url))
 

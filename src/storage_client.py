@@ -11,6 +11,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _BLOB_URL = "https://{account}.blob.core.windows.net"
+_WEB_URL  = "https://{account}.z6.web.core.windows.net"
 
 
 def _get_client(account: str, tenant_id: str, client_id: str, client_secret: str):
@@ -25,6 +26,11 @@ def _get_client(account: str, tenant_id: str, client_id: str, client_secret: str
     )
     url = _BLOB_URL.format(account=account)
     return BlobServiceClient(account_url=url, credential=credential)
+
+
+def get_web_endpoint(account: str) -> str:
+    """Return the Static Website primary endpoint URL for the storage account."""
+    return _WEB_URL.format(account=account)
 
 
 def upload_reports(
@@ -87,6 +93,43 @@ def upload_reports(
         logger.info("  ✓ %s", url)
 
     return urls
+
+
+def upload_index(
+    account: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
+    index_html: str,
+    progress_cb=None,
+) -> None:
+    """Upload index.html to the $web container (Static Website root)."""
+    import tempfile
+    client = _get_client(account, tenant_id, client_id, client_secret)
+    web_client = client.get_container_client("$web")
+
+    if progress_cb:
+        progress_cb("Aktualisiere index.html …")
+    logger.info("Upload index.html → $web/index.html")
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".html", delete=False, encoding="utf-8"
+    ) as tmp:
+        tmp.write(index_html)
+        tmp_path = tmp.name
+
+    try:
+        with open(tmp_path, "rb") as f:
+            web_client.upload_blob(
+                name="index.html",
+                data=f,
+                overwrite=True,
+                content_settings=_content_settings("text/html"),
+            )
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    logger.info("  ✓ index.html hochgeladen")
 
 
 def list_blobs(
