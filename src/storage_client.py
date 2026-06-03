@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 _BLOB_URL      = "https://{account}.blob.core.windows.net"
 _WEB_URL       = "https://{account}.z6.web.core.windows.net"
-_REPORTS_DIR   = "reports/"   # sub-folder inside $web
 
 
 def _get_client(account: str, tenant_id: str, client_id: str, client_secret: str):
@@ -39,16 +38,23 @@ def get_web_endpoint(account: str) -> str:
 
 def upload_reports(
     account: str,
-    container: str,   # kept for API compat, not used (target is always $web)
+    container: str,
     tenant_id: str,
     client_id: str,
     client_secret: str,
     files: list[str],
     progress_cb=None,
 ) -> list[str]:
-    """Upload report files to $web/reports/ so they share the Static Website origin."""
+    """Upload report files to the private container (authenticated access only)."""
     client = _get_client(account, tenant_id, client_id, client_secret)
-    web_client = client.get_container_client("$web")
+    container_client = client.get_container_client(container)
+
+    # Create container if it doesn't exist yet
+    try:
+        container_client.create_container()
+        logger.info("Container '%s' angelegt.", container)
+    except Exception:
+        pass  # already exists
 
     urls: list[str] = []
     for file_path in files:
@@ -57,22 +63,22 @@ def upload_reports(
             logger.warning("Datei nicht gefunden, übersprungen: %s", file_path)
             continue
 
-        blob_name    = _REPORTS_DIR + path.name
+        blob_name    = path.name
         content_type = "text/html" if path.suffix == ".html" else "application/octet-stream"
 
         if progress_cb:
             progress_cb(f"Lade hoch: {path.name} …")
-        logger.info("Upload: %s → $web/%s", path.name, blob_name)
+        logger.info("Upload: %s → %s/%s", path.name, container, blob_name)
 
         with open(path, "rb") as f:
-            web_client.upload_blob(
+            container_client.upload_blob(
                 name=blob_name,
                 data=f,
                 overwrite=True,
                 content_settings=_content_settings(content_type),
             )
 
-        url = f"{_WEB_URL.format(account=account)}/{blob_name}"
+        url = f"{_BLOB_URL.format(account=account)}/{container}/{blob_name}"
         urls.append(url)
         logger.info("  ✓ %s", url)
 
@@ -86,14 +92,13 @@ def delete_tmp_blobs(
     client_id: str,
     client_secret: str,
 ) -> None:
-    """Delete leftover tmp*.html blobs from $web/reports/."""
+    """Delete leftover tmp*.html blobs from the private container."""
     client = _get_client(account, tenant_id, client_id, client_secret)
-    web_client = client.get_container_client("$web")
+    container_client = client.get_container_client(container)
     try:
-        for blob in list(web_client.list_blobs(name_starts_with=_REPORTS_DIR)):
-            name = blob.name[len(_REPORTS_DIR):]
-            if name.startswith("tmp") and name.endswith(".html"):
-                web_client.delete_blob(blob.name)
+        for blob in list(container_client.list_blobs()):
+            if blob.name.startswith("tmp") and blob.name.endswith(".html"):
+                container_client.delete_blob(blob.name)
                 logger.info("Temp-Blob gelöscht: %s", blob.name)
     except Exception as e:
         logger.warning("Fehler beim Bereinigen von Temp-Blobs: %s", e)
@@ -143,19 +148,16 @@ def list_blobs(
     client_id: str,
     client_secret: str,
 ) -> list[dict]:
-    """Return list of report blobs (from $web/reports/) with name and last_modified."""
+    """Return list of report blobs from the private container."""
     client = _get_client(account, tenant_id, client_id, client_secret)
-    web_client = client.get_container_client("$web")
+    container_client = client.get_container_client(container)
     result = []
     try:
-        for blob in web_client.list_blobs(name_starts_with=_REPORTS_DIR):
-            name = blob.name[len(_REPORTS_DIR):]   # strip "reports/" prefix
-            if not name:
-                continue
-            if name.startswith("tmp") and name.endswith(".html"):
+        for blob in container_client.list_blobs():
+            if blob.name.startswith("tmp") and blob.name.endswith(".html"):
                 continue
             result.append({
-                "name":          name,
+                "name":          blob.name,
                 "last_modified": blob.last_modified,
                 "size":          blob.size,
             })

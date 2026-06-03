@@ -56,7 +56,7 @@ def build_index_html(
         size_kb = round(blob.get("size", 0) / 1024, 1)
         rows_html += f"""
         <tr>
-          <td><a href="/reports/{name}" target="_blank" class="report-link">📊 {name}</a></td>
+          <td><a href="#" onclick="openReport('{base_url}/{name}', event)" class="report-link">📊 {name}</a></td>
           <td>{date_str}</td>
           <td>{size_kb} KB</td>
         </tr>"""
@@ -183,6 +183,7 @@ const msalConfig = {{
   cache: {{ cacheLocation: "sessionStorage" }}
 }};
 
+const SCOPES = ["https://storage.azure.com/user_impersonation"];
 let msalInstance = null;
 
 (async function initMsal() {{
@@ -207,7 +208,7 @@ async function msalLogin() {{
       msalInstance = new msal.PublicClientApplication(msalConfig);
       await msalInstance.initialize();
     }}
-    await msalInstance.loginRedirect({{ scopes: ["openid", "profile"] }});
+    await msalInstance.loginRedirect({{ scopes: SCOPES }});
   }} catch(e) {{
     const warn = document.getElementById('auth-warning');
     warn.style.display = 'block';
@@ -225,6 +226,38 @@ function showUser(account) {{
   document.getElementById('login-btn').style.display = 'none';
   document.getElementById('logout-btn').style.display = 'inline-block';
   document.getElementById('auth-warning').style.display = 'none';
+}}
+
+async function openReport(url, event) {{
+  event.preventDefault();
+  if (!msalInstance) {{ alert("Bitte zuerst anmelden."); return; }}
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length === 0) {{
+    const warn = document.getElementById('auth-warning');
+    warn.style.display = 'block';
+    warn.textContent = '⚠ Bitte zuerst anmelden.';
+    return;
+  }}
+  try {{
+    let resp;
+    try {{
+      resp = await msalInstance.acquireTokenSilent({{ scopes: SCOPES, account: accounts[0] }});
+    }} catch(e) {{
+      await msalInstance.acquireTokenRedirect({{ scopes: SCOPES, account: accounts[0] }});
+      return;
+    }}
+    const r = await fetch(url, {{ headers: {{ Authorization: "Bearer " + resp.accessToken }} }});
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
+    const blob = await r.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const win = window.open(objUrl, '_blank');
+    if (win) setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+  }} catch(e) {{
+    const warn = document.getElementById('auth-warning');
+    warn.style.display = 'block';
+    warn.textContent = '❌ Fehler beim Öffnen: ' + e.message;
+    console.error(e);
+  }}
 }}
 </script>
 </body>
