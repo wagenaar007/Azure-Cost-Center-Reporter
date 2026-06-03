@@ -223,6 +223,13 @@ class CostCenterApp(ctk.CTk):
                       fg_color=self._ACC2, hover_color=self._ACC,
                       command=self._browse_output).grid(row=0, column=1)
 
+        pub = self._card(p, "\u2601  Publish to Azure")
+        self.e_storage_account = self._field(pub, "Storage Account Name", "costcenterreports")
+        self.e_storage_container = self._field(pub, "Container Name", "reports")
+        self.e_storage_msal_client = self._field(pub, "MSAL Client ID (f\u00fcr Index-Login)", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+        ctk.CTkLabel(pub, text="Tenant ID und Client Secret werden aus Azure Authentication \u00fcbernommen.",
+                     font=ctk.CTkFont(size=9), text_color="#3A5A7A").pack(anchor="w", pady=(0, 4))
+
         ctk.CTkFrame(p, height=1, fg_color=self._BDR).pack(fill="x", padx=10, pady=(10, 8))
         brow = ctk.CTkFrame(p, fg_color="transparent")
         brow.pack(fill="x", padx=10, pady=(0, 8))
@@ -234,14 +241,23 @@ class CostCenterApp(ctk.CTk):
             command=self._save_settings
         ).pack(side="left")
         ctk.CTkButton(
-            brow, text="🗑  Clear Cache", height=34, width=100,
+            brow, text="\U0001f5d1  Clear Cache", height=34, width=110,
             fg_color="#2A0E0E", hover_color="#441A1A",
             border_width=1, border_color="#6B2626",
             font=ctk.CTkFont(size=11), text_color="#FF9090",
             command=self._clear_cache
         ).pack(side="left", padx=(6, 0))
+        self.btn_publish = ctk.CTkButton(
+            brow, text="\u2601  Ver\u00f6ffentlichen", height=34, width=148,
+            fg_color="#0B3050", hover_color="#1A4F78",
+            border_width=1, border_color="#1E6EA8",
+            font=ctk.CTkFont(size=11, weight="bold"), text_color="#7DC4E8",
+            state="disabled",
+            command=self._publish_reports
+        )
+        self.btn_publish.pack(side="right", padx=(6, 0))
         self.btn_start = ctk.CTkButton(
-            brow, text="\u25b6  Create Report", height=34, width=168,
+            brow, text="\u25b6  Create Report", height=34, width=148,
             fg_color="#0B4A26", hover_color="#136635",
             border_width=1, border_color="#1A8040",
             font=ctk.CTkFont(size=12, weight="bold"), text_color="#90FFB8",
@@ -453,7 +469,10 @@ class CostCenterApp(ctk.CTk):
                 save["CLIENT_SECRET"].encode()
             ).decode()
             save["_secret_b64"] = True
-        save["_available_subs"] = self._available_subs
+        save["_available_subs"]      = self._available_subs
+        save["STORAGE_ACCOUNT"]      = self.e_storage_account.get().strip()
+        save["STORAGE_CONTAINER"]    = self.e_storage_container.get().strip()
+        save["STORAGE_MSAL_CLIENT"]  = self.e_storage_msal_client.get().strip()
         try:
             SETTINGS_FILE.write_text(json.dumps(save, indent=2, ensure_ascii=False), encoding="utf-8")
             self._append_log("Settings saved.", logging.INFO)
@@ -486,6 +505,16 @@ class CostCenterApp(ctk.CTk):
             checked_ids = {s.strip() for s in data.get("SUBSCRIPTION_IDS", "").split(",") if s.strip()}
             if saved_subs:
                 self._populate_sub_checkboxes(saved_subs, preselect=checked_ids)
+
+            def _fill_pub(entry: ctk.CTkEntry, key: str):
+                v = data.get(key, "")
+                if v:
+                    entry.delete(0, "end")
+                    entry.insert(0, v)
+
+            _fill_pub(self.e_storage_account,     "STORAGE_ACCOUNT")
+            _fill_pub(self.e_storage_container,   "STORAGE_CONTAINER")
+            _fill_pub(self.e_storage_msal_client, "STORAGE_MSAL_CLIENT")
         except Exception as exc:
             self._append_log(f"Could not load settings: {exc}", logging.WARNING)
 
@@ -642,6 +671,7 @@ class CostCenterApp(ctk.CTk):
                     self.btn_open.configure(state="normal")
                     if self._html_path:
                         self.btn_browser.configure(state="normal")
+                        self.btn_publish.configure(state="normal")
                     self.lbl_status.configure(text="\u25cf  Done!", text_color="#4EC98A")
                 elif level == -2:
                     self._append_log(f"ERROR: {msg}", logging.ERROR)
@@ -690,6 +720,106 @@ class CostCenterApp(ctk.CTk):
         else:
             messagebox.showwarning("File not found",
                                    f"HTML report not found:\n{self._html_path}")
+
+    def _publish_reports(self):
+        account   = self.e_storage_account.get().strip()
+        container = self.e_storage_container.get().strip()
+        msal_cid  = self.e_storage_msal_client.get().strip()
+        cfg       = self._get_config()
+        tenant_id    = cfg.get("TENANT_ID", "")
+        client_id    = cfg.get("CLIENT_ID", "")
+        client_secret = cfg.get("CLIENT_SECRET", "")
+
+        if not all([account, container, tenant_id, client_id, client_secret]):
+            messagebox.showerror(
+                "Fehlende Einstellungen",
+                "Bitte f\u00fclle alle Felder aus:\n"
+                "  - Storage Account Name\n"
+                "  - Container Name\n"
+                "  - Tenant ID, Client ID, Client Secret (aus Azure Authentication)"
+            )
+            return
+
+        if not self._html_path or not Path(self._html_path).exists():
+            messagebox.showerror("Kein Report", "Bitte zuerst einen Report erstellen.")
+            return
+
+        self.btn_publish.configure(state="disabled", text="\u23f3  Uploading\u2026")
+        self.lbl_status.configure(text="\u23f3  Ver\u00f6ffentliche\u2026", text_color="#E6A020")
+
+        files_to_upload = [self._html_path]
+        if self._excel_path and Path(self._excel_path).exists():
+            files_to_upload.append(self._excel_path)
+
+        def _do_publish():
+            try:
+                from src.storage_client import upload_reports, list_blobs
+                from src.index_builder  import build_index_html
+                import tempfile
+
+                def _progress(msg):
+                    self._log_queue.put((20, msg))
+
+                upload_reports(
+                    account=account,
+                    container=container,
+                    tenant_id=tenant_id,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    files=files_to_upload,
+                    progress_cb=_progress,
+                )
+
+                # Rebuild index.html with updated file list
+                _progress("Aktualisiere index.html\u2026")
+                blobs = list_blobs(account, container, tenant_id, client_id, client_secret)
+                index_html = build_index_html(
+                    blobs=blobs,
+                    account=account,
+                    container=container,
+                    client_id=msal_cid or client_id,
+                    tenant_id=tenant_id,
+                )
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".html", delete=False, encoding="utf-8"
+                ) as tmp:
+                    tmp.write(index_html)
+                    tmp_path = tmp.name
+
+                upload_reports(
+                    account=account,
+                    container=container,
+                    tenant_id=tenant_id,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    files=[tmp_path],
+                )
+                Path(tmp_path).unlink(missing_ok=True)
+
+                index_url = f"https://{account}.blob.core.windows.net/{container}/index.html"
+                self._log_queue.put((-1, f"\u2705  Ver\u00f6ffentlicht! Index: {index_url}"))
+                self.after(0, lambda: self._on_publish_done(index_url))
+
+            except Exception as exc:
+                import traceback
+                self._log_queue.put((-2, f"Publish fehlgeschlagen: {exc}\n{traceback.format_exc()}"))
+                self.after(0, lambda: self.btn_publish.configure(
+                    state="normal", text="\u2601  Ver\u00f6ffentlichen"
+                ))
+
+        threading.Thread(target=_do_publish, daemon=True).start()
+
+    def _on_publish_done(self, index_url: str):
+        import webbrowser
+        self.btn_publish.configure(state="normal", text="\u2601  Ver\u00f6ffentlichen")
+        self.lbl_status.configure(text="\u25cf  Ver\u00f6ffentlicht!", text_color="#4EC98A")
+        if messagebox.askyesno(
+            "Ver\u00f6ffentlicht!",
+            f"Reports wurden erfolgreich hochgeladen.\n\n"
+            f"Index-URL:\n{index_url}\n\n"
+            "Im Browser \u00f6ffnen?"
+        ):
+            webbrowser.open(index_url)
 
 
 if __name__ == "__main__":

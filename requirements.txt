@@ -17,3 +17,6 @@ customtkinter>=5.2.0
 
 # EXE-Build (nur auf dem Build-PC nötig)
 pyinstaller>=6.0.0
+
+# Azure Blob Storage (für "Veröffentlichen"-Funktion)
+azure-storage-blob>=12.19.0
