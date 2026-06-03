@@ -87,7 +87,7 @@ class CostCenterApp(ctk.CTk):
 
         badge = ctk.CTkFrame(hdr, fg_color=self._ACC2, corner_radius=6)
         badge.pack(side="right", padx=18, pady=20)
-        ctk.CTkLabel(badge, text="v 0.0.1", font=ctk.CTkFont(size=10),
+        ctk.CTkLabel(badge, text="v 0.0.2", font=ctk.CTkFont(size=10),
                      text_color="white").pack(padx=10, pady=3)
 
         ctk.CTkFrame(self, height=1, fg_color=self._BDR).pack(fill="x")
@@ -441,24 +441,25 @@ class CostCenterApp(ctk.CTk):
 
     def _clear_cache(self):
         from tkinter import messagebox
-        if messagebox.askyesno(
-            "Clear Cache",
-            "Delete all cached cost data?\n\n"
-            "All months will be re-fetched from the Azure API on the next report.",
+        if not messagebox.askyesno(
+            "Cache löschen",
+            "Alle lokal gespeicherten Kostendaten löschen?\n\n"
+            "Beim nächsten Report werden alle Monate neu von der Azure API abgerufen.",
         ):
-            try:
-                from src.cache import init_db, clear_cache, get_cache_summary
-                init_db()
-                info = get_cache_summary()
-                months_total = sum(c["months_cached"] for c in info) if info else 0
-                clear_cache()
-                self._append_log(
-                    f"Cache cleared \u2013 {months_total} month(s) removed. "
-                    "All data will be re-fetched on the next report.",
-                    logging.INFO,
-                )
-            except Exception as exc:
-                self._append_log(f"Failed to clear cache: {exc}", logging.ERROR)
+            return
+        try:
+            from src.cache import init_db, clear_cache, get_cache_summary
+            init_db()
+            info = get_cache_summary()
+            months_total = sum(c["months_cached"] for c in info) if info else 0
+            clear_cache()
+            self._append_log(
+                f"Cache gelöscht – {months_total} Monat(e) entfernt. "
+                "Alle Daten werden beim nächsten Report neu abgerufen.",
+                logging.INFO,
+            )
+        except Exception as exc:
+            self._append_log(f"Cache löschen fehlgeschlagen: {exc}", logging.ERROR)
 
     def _save_settings(self):
         import base64
