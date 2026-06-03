@@ -183,8 +183,9 @@ const msalConfig = {{
 
 let msalInstance = null;
 let msalReady = false;
+let msalInitError = null;
 
-// MSAL 2.x requires explicit initialize() before any interaction
+// Pre-initialize in background; login button will also retry if needed
 (async function initMsal() {{
   try {{
     msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -194,16 +195,22 @@ let msalReady = false;
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) showUser(accounts[0]);
   }} catch(e) {{
-    console.warn("MSAL init failed:", e);
+    msalInitError = e;
+    console.error("MSAL background init failed:", e);
   }}
 }})();
 
 async function msalLogin() {{
-  if (!msalInstance || !msalReady) {{
-    alert("MSAL wird noch initialisiert – bitte kurz warten und erneut versuchen.");
-    return;
-  }}
   try {{
+    // If background init failed or not yet done, retry here
+    if (!msalInstance) {{
+      msalInstance = new msal.PublicClientApplication(msalConfig);
+    }}
+    if (!msalReady) {{
+      await msalInstance.initialize();
+      await msalInstance.handleRedirectPromise();
+      msalReady = true;
+    }}
     const result = await msalInstance.loginPopup({{
       scopes: ["https://storage.azure.com/user_impersonation"]
     }});
