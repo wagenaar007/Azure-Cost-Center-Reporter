@@ -176,34 +176,51 @@ const msalConfig = {{
   auth: {{
     clientId: "{client_id}",
     authority: "https://login.microsoftonline.com/{tenant_id}",
-    redirectUri: window.location.href.split('?')[0],
+    redirectUri: window.location.origin + "/",
   }},
   cache: {{ cacheLocation: "sessionStorage" }}
 }};
 
-let msalInstance;
-try {{
-  msalInstance = new msal.PublicClientApplication(msalConfig);
-}} catch(e) {{
-  console.warn("MSAL init failed:", e);
-}}
+let msalInstance = null;
+let msalReady = false;
+
+// MSAL 2.x requires explicit initialize() before any interaction
+(async function initMsal() {{
+  try {{
+    msalInstance = new msal.PublicClientApplication(msalConfig);
+    await msalInstance.initialize();
+    await msalInstance.handleRedirectPromise();
+    msalReady = true;
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) showUser(accounts[0]);
+  }} catch(e) {{
+    console.warn("MSAL init failed:", e);
+  }}
+}})();
 
 async function msalLogin() {{
-  if (!msalInstance) return;
+  if (!msalInstance || !msalReady) {{
+    alert("MSAL wird noch initialisiert – bitte kurz warten und erneut versuchen.");
+    return;
+  }}
   try {{
     const result = await msalInstance.loginPopup({{
       scopes: ["https://storage.azure.com/user_impersonation"]
     }});
     showUser(result.account);
   }} catch(e) {{
-    document.getElementById('auth-warning').style.display = 'block';
-    document.getElementById('auth-warning').textContent = '❌ Anmeldung fehlgeschlagen: ' + e.message;
+    const warn = document.getElementById('auth-warning');
+    warn.style.display = 'block';
+    warn.textContent = '❌ Anmeldung fehlgeschlagen: ' + e.message;
+    console.error("MSAL login error:", e);
   }}
 }}
 
-function msalLogout() {{
+async function msalLogout() {{
   if (!msalInstance) return;
-  msalInstance.logoutPopup();
+  try {{
+    await msalInstance.logoutPopup();
+  }} catch(e) {{ /* ignore */ }}
   document.getElementById('user-label').textContent = '';
   document.getElementById('logout-btn').style.display = 'none';
   document.getElementById('login-btn').style.display = 'inline-block';
@@ -215,14 +232,6 @@ function showUser(account) {{
   document.getElementById('logout-btn').style.display = 'inline-block';
   document.getElementById('auth-warning').style.display = 'none';
 }}
-
-// Check if already logged in
-window.addEventListener('load', async () => {{
-  if (!msalInstance) return;
-  await msalInstance.handleRedirectPromise();
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) showUser(accounts[0]);
-}});
 </script>
 </body>
 </html>
