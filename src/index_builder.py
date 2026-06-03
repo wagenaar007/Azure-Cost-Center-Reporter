@@ -56,7 +56,7 @@ def build_index_html(
         size_kb = round(blob.get("size", 0) / 1024, 1)
         rows_html += f"""
         <tr>
-          <td><a href="{base_url}/{name}" target="_blank" class="report-link">📊 {name}</a></td>
+          <td><a href="#" onclick="openReport('{base_url}/{name}', event)" class="report-link">📊 {name}</a></td>
           <td>{date_str}</td>
           <td>{size_kb} KB</td>
         </tr>"""
@@ -222,6 +222,40 @@ async function msalLogin() {{
     warn.style.display = 'block';
     warn.textContent = '❌ Anmeldung fehlgeschlagen: ' + e.message;
     console.error("MSAL login error:", e);
+  }}
+}}
+
+async function openReport(url, event) {{
+  event.preventDefault();
+  try {{
+    let token;
+    if (msalReady && msalInstance) {{
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {{
+        const warn = document.getElementById('auth-warning');
+        warn.style.display = 'block';
+        warn.textContent = '⚠ Bitte zuerst anmelden.';
+        return;
+      }}
+      const resp = await msalInstance.acquireTokenSilent({{
+        scopes: ["https://storage.azure.com/user_impersonation"],
+        account: accounts[0]
+      }});
+      token = resp.accessToken;
+    }}
+
+    const headers = token ? {{ Authorization: "Bearer " + token }} : {{}};
+    const r = await fetch(url, {{ headers }});
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
+    const blob = await r.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const win = window.open(objUrl, '_blank');
+    if (win) setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
+  }} catch(e) {{
+    const warn = document.getElementById('auth-warning');
+    warn.style.display = 'block';
+    warn.textContent = '❌ Fehler beim Öffnen: ' + e.message;
+    console.error(e);
   }}
 }}
 
