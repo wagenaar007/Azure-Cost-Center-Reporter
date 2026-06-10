@@ -55,7 +55,12 @@ def upload_reports(
             continue
 
         blob_name    = path.name
-        content_type = "text/html" if path.suffix == ".html" else "application/octet-stream"
+        if path.suffix == ".html":
+            content_type = "text/html"
+        elif path.suffix == ".xlsx":
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            content_type = "application/octet-stream"
 
         if progress_cb:
             progress_cb(f"Lade hoch: {path.name} …")

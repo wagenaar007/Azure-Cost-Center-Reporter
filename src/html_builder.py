@@ -407,6 +407,7 @@ def build_html(
     sub_totals: list[dict],
     date_from: str,
     date_to: str,
+    excel_filename: str | None = None,
 ) -> None:
 
     subs = [s["SubscriptionName"] for s in sub_totals]
@@ -485,7 +486,10 @@ def build_html(
       <h1>&#9729; Azure Cost Center Report</h1>
       <div class="meta">Zeitraum: {_esc(date_from)} &ndash; {_esc(date_to)}&nbsp;&nbsp;|&nbsp;&nbsp;Erstellt: {_esc(generated)}</div>
     </div>
-    <button class="btn-print" onclick="window.print()">&#128438;&nbsp; Drucken</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      {f'<a class="btn-print" href="{_esc(excel_filename)}" download>&#128202;&nbsp; Excel &ouml;ffnen</a>' if excel_filename else ''}
+      <button class="btn-print" onclick="window.print()">&#128438;&nbsp; Drucken</button>
+    </div>
   </div>
 </div>
 

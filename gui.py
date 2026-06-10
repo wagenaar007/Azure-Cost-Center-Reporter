@@ -646,6 +646,7 @@ class CostCenterApp(ctk.CTk):
                     sub_totals=sub_totals,
                     date_from=date_from,
                     date_to=date_to,
+                    excel_filename=Path(output_file).name,
                 )
                 self._html_path = html_path
             except Exception as _html_exc:
