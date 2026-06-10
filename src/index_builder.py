@@ -39,12 +39,15 @@ def build_index_html(
         Complete HTML string ready to be uploaded as index.html.
     """
     report_blobs = [b for b in blobs if b["name"].endswith(".html") and b["name"] != "index.html"]
+    excel_names  = {b["name"] for b in blobs if b["name"].endswith(".xlsx")}
     base_url = f"https://{account}.blob.core.windows.net/{container}"
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     rows_html = ""
     for blob in report_blobs:
         name = blob["name"]
+        stem = name[:-5]  # strip .html
+        xlsx_name = stem + ".xlsx"
         modified = blob.get("last_modified")
         if modified:
             try:
@@ -54,9 +57,13 @@ def build_index_html(
         else:
             date_str = "–"
         size_kb = round(blob.get("size", 0) / 1024, 1)
+        excel_btn = ""
+        if xlsx_name in excel_names:
+            excel_url = f"{base_url}/{xlsx_name}"
+            excel_btn = f' &nbsp;<a href="#" onclick="downloadFile(&apos;{excel_url}&apos;, &apos;{xlsx_name}&apos;, event)" class="report-link" style="font-size:0.82rem;opacity:.8">&#128202; Excel</a>'
         rows_html += f"""
         <tr>
-          <td><a href="#" onclick="openReport('{base_url}/{name}', event)" class="report-link">📊 {name}</a></td>
+          <td><a href="#" onclick="openReport('{base_url}/{name}', event)" class="report-link">📊 {name}</a>{excel_btn}</td>
           <td>{date_str}</td>
           <td>{size_kb} KB</td>
         </tr>"""
@@ -226,6 +233,35 @@ function showUser(account) {{
   document.getElementById('login-btn').style.display = 'none';
   document.getElementById('logout-btn').style.display = 'inline-block';
   document.getElementById('auth-warning').style.display = 'none';
+}}
+
+async function downloadFile(url, filename, event) {{
+  event.preventDefault();
+  if (!msalInstance) {{ alert("Bitte zuerst anmelden."); return; }}
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length === 0) {{ alert("Bitte zuerst anmelden."); return; }}
+  try {{
+    let resp;
+    try {{
+      resp = await msalInstance.acquireTokenSilent({{ scopes: SCOPES, account: accounts[0] }});
+    }} catch(e) {{
+      await msalInstance.acquireTokenRedirect({{ scopes: SCOPES, account: accounts[0] }}); return;
+    }}
+    const r = await fetch(url + '?v=' + Date.now(), {{ headers: {{
+      "Authorization": "Bearer " + resp.accessToken,
+      "x-ms-version": "2020-04-08",
+      "Cache-Control": "no-cache"
+    }} }});
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => {{ document.body.removeChild(a); URL.revokeObjectURL(a.href); }}, 5000);
+  }} catch(e) {{
+    alert('Fehler beim Download: ' + e.message);
+  }}
 }}
 
 async function openReport(url, event) {{

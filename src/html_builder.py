@@ -496,7 +496,6 @@ def build_html(
       <div class="meta">Zeitraum: {_esc(date_from)} &ndash; {_esc(date_to)}&nbsp;&nbsp;|&nbsp;&nbsp;Erstellt: {_esc(generated)}</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      {f'<a class="btn-print" href="{_esc(excel_filename)}" download>&#128202;&nbsp; Excel &ouml;ffnen</a>' if excel_filename else ''}
       <button class="btn-print" onclick="window.print()">&#128438;&nbsp; Drucken</button>
     </div>
   </div>
