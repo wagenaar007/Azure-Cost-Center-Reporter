@@ -66,12 +66,17 @@ def upload_reports(
             progress_cb(f"Lade hoch: {path.name} …")
         logger.info("Upload: %s → %s/%s", path.name, container, blob_name)
 
+        from azure.storage.blob import ContentSettings
+        cs = ContentSettings(
+            content_type=content_type,
+            cache_control="no-cache, no-store, must-revalidate",
+        )
         with open(path, "rb") as f:
             container_client.upload_blob(
                 name=blob_name,
                 data=f,
                 overwrite=True,
-                content_settings=_content_settings(content_type),
+                content_settings=cs,
             )
 
         url = f"{_BLOB_URL.format(account=account)}/{container}/{blob_name}"
