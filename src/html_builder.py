@@ -79,8 +79,14 @@ tbody tr.tot td { background: #bdd7ee !important; font-weight: 700; }
              border: 1px solid rgba(255,255,255,.45); padding: 9px 20px;
              border-radius: 6px; font-size: 14px; font-family: inherit; cursor: pointer; }
 .btn-print:hover { background: rgba(255,255,255,.28); }
+.sub-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+.sub-grid .m-btn { text-align: left; width: 100%; }
+.search-box { max-width: 360px; width: 100%; padding: 8px 12px; margin-bottom: 12px;
+              border: 1.5px solid #b0c8e4; border-radius: 7px; font-size: 13px;
+              font-family: inherit; color: #1a2a3a; outline: none; box-sizing: border-box; }
+.search-box:focus { border-color: #2e75b6; }
 @media print {
-  .btn-print, .sec-filter { display: none !important; }
+  .btn-print, .sec-filter, .search-box { display: none !important; }
   body { background: white !important; font-size: 12px; }
   .hdr { background: #1e3a5f !important;
          -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
@@ -157,11 +163,12 @@ function selectYear(y){ sel = new Set(DATA.months.filter(m => m.startsWith(y)));
 
 // ── Subscription buttons ──────────────────────────────────────────────────────
 function renderSubBtns() {
-  let html = "";
+  let html = '<div class="sub-grid">';
   DATA.subs.forEach(s => {
     const safe = s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-    html += `<button class="m-btn ${selSubs.has(s)?"active":""}" onclick="toggleSub(this)" data-sub="${safe}">${safe}</button> `;
+    html += `<button class="m-btn ${selSubs.has(s)?"active":""}" onclick="toggleSub(this)" data-sub="${safe}">${safe}</button>`;
   });
+  html += "</div>";
   document.getElementById("sub-btns").innerHTML = html;
 }
 function toggleSub(btn) {
@@ -336,9 +343,11 @@ function renderSvcTable() {
     html += '<th class="r">\u0394\u00a0%</th>';
   }
   html += "</tr></thead><tbody>";
+  const svcQ = (document.getElementById("svc-search")?.value || "").trim().toLowerCase();
   DATA.svcList.forEach(svc => {
     const rowTot = svcCost(svc, ms);
     if (rowTot < 0.005) return;
+    if (svcQ && !svc.toLowerCase().includes(svcQ)) return;
     html += `<tr><td class="svc-name">${svc}</td>`;
     ms.forEach(m => { html += `<td class="r">${eur(svcCost(svc, [m]))}</td>`; });
     html += `<td class="r"><strong>${eur(rowTot)}</strong></td>`;
@@ -556,6 +565,7 @@ def build_html(
   <!-- Service-Pivot (dynamisch) -->
   <div class="sec">
     <h2>Kosten je Azure-Service und Monat <span class="filter-note" id="svc-filter-note"></span></h2>
+    <input id="svc-search" class="search-box" type="text" placeholder="&#128269;&#160;Service suchen&#8230;" oninput="renderSvcTable()">
     <div style="overflow-x:auto" id="svc-table"></div>
   </div>
 
