@@ -124,12 +124,17 @@ def upload_index(
         tmp_path = tmp.name
 
     try:
+        from azure.storage.blob import ContentSettings
+        no_cache = ContentSettings(
+            content_type="text/html",
+            cache_control="no-cache, no-store, must-revalidate",
+        )
         with open(tmp_path, "rb") as f:
             web_client.upload_blob(
                 name="index.html",
                 data=f,
                 overwrite=True,
-                content_settings=_content_settings("text/html"),
+                content_settings=no_cache,
             )
     finally:
         Path(tmp_path).unlink(missing_ok=True)

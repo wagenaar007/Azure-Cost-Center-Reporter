@@ -550,6 +550,7 @@ class CostCenterApp(ctk.CTk):
 
         self._running = True
         self._excel_path = None
+        self._html_path = None
         self.btn_start.configure(state="disabled", text="⏳  Running…")
         self.btn_open.configure(state="disabled")
         self.lbl_status.configure(text="⏳  Creating report…", text_color="#E6A020")
