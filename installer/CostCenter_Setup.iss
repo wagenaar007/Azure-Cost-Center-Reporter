@@ -1,5 +1,5 @@
 #define AppName      "Azure Cost Center Reporter"
-#define AppVersion   "0.0.2"
+#define AppVersion   "0.0.3"
 #define AppPublisher "Azure CostCenter Reporter"
 #define AppURL       "https://github.com/wagenaar007/Azure-Cost-Center-Reporter"
 #define AppExeName   "CostCenter.exe"
