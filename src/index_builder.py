@@ -249,8 +249,7 @@ async function downloadFile(url, filename, event) {{
     }}
     const r = await fetch(url + '?v=' + Date.now(), {{ headers: {{
       "Authorization": "Bearer " + resp.accessToken,
-      "x-ms-version": "2020-04-08",
-      "Cache-Control": "no-cache"
+      "x-ms-version": "2020-04-08"
     }} }});
     if (!r.ok) throw new Error(r.status + " " + r.statusText);
     const blob = await r.blob();
@@ -284,8 +283,7 @@ async function openReport(url, event) {{
     }}
     const r = await fetch(url + '?v=' + Date.now(), {{ headers: {{
       "Authorization": "Bearer " + resp.accessToken,
-      "x-ms-version": "2020-04-08",
-      "Cache-Control": "no-cache"
+      "x-ms-version": "2020-04-08"
     }} }});
     if (!r.ok) throw new Error(r.status + " " + r.statusText);
     const blob = await r.blob();
